@@ -13,7 +13,6 @@ from selenium.common.exceptions import (
 from utils import esperar_elemento
 from configs import driver
 
-
 def clicar_elemento(xpath, tentativas=3):
     for tentativa in range(tentativas):
         try:
@@ -31,14 +30,12 @@ def clicar_elemento(xpath, tentativas=3):
             driver.refresh()  
             print("Página atualizada após erro ao clicar no botão.")
 
-
 def obter_opcoes(xpath, tentativas=3):
     for tentativa in range(tentativas):
         try:
             esperar_elemento(xpath)
             select = Select(driver.find_element(By.XPATH, xpath))
             opcoes = [opcao.text for opcao in select.options]
-            print(f"Opções obtidas: {opcoes}")
             return opcoes
         except (TimeoutException, NoSuchElementException) as e:
             print(f"Erro ao obter opções (tentativa {tentativa + 1} de {tentativas}): {e}")
@@ -47,8 +44,7 @@ def obter_opcoes(xpath, tentativas=3):
                 continue
             driver.refresh()  
             print("Página atualizada após erro ao obter opções.")
-    return [] 
-
+    return []
 
 def selecionar_combo(xpath, valor, tentativas=3):
     for tentativa in range(tentativas):

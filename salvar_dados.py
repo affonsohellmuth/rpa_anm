@@ -1,20 +1,25 @@
 from openpyxl import load_workbook, Workbook
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from utils import data_hora_atual
 import os
+import time
 
 nome_arquivo = f"Maiores_Arrecadadores_{data_hora_atual}.xlsx"
+pasta_planilha = os.path.join(os.path.expanduser("~"), "Documents/Planilha ANM")
 
 def capturar_primeiras_seis_colunas(func_navegador):
     try:
         elemento = func_navegador.find_element(By.CSS_SELECTOR, '#ctl00_ContentPlaceHolder1_dvResultado > table.tabelaFormulario')
         texto = elemento.text
-    except NoSuchElementException  as e:
+    except NoSuchElementException as e:
         print(f"Erro ao capturar elemento: {e}")
         return {}
-
-    texto = elemento.text
+    except TimeoutException:
+        print("Timeout - A página não carregou a tempo. Tentando atualizar...")
+        func_navegador.refresh()  # Tenta atualizar a página
+        time.sleep(5)  # Aguarda 5 segundos para a página recarregar
+        return capturar_primeiras_seis_colunas(func_navegador)  # Tenta novamente após o refresh
 
     dados = {}
     for linha in texto.split("\n"):  
@@ -26,7 +31,11 @@ def capturar_primeiras_seis_colunas(func_navegador):
     return dados  
 
 def salvar_dados_planilha(dados_tabela, nome_arquivo):
-    caminho_arquivo = os.path.join(os.path.expanduser("~"), "Documents/Planilha ANM", nome_arquivo)
+    if not os.path.exists(pasta_planilha):
+        os.makedirs(pasta_planilha)
+        print(f"Pasta 'Planilha ANM' criada em: {pasta_planilha}")
+    
+    caminho_arquivo = os.path.join(pasta_planilha, nome_arquivo)
 
     if os.path.exists(caminho_arquivo):
         workbook = load_workbook(caminho_arquivo)
@@ -52,9 +61,18 @@ def salvar_dados_planilha(dados_tabela, nome_arquivo):
     print(f"Dados salvos na planilha '{caminho_arquivo}' com sucesso!")
 
 def capturar_todos_os_dados(func_navegador, municipio, regiao):
-    # Captura os dados da primeira tabela
-    elemento = func_navegador.find_element(By.CSS_SELECTOR, '#ctl00_ContentPlaceHolder1_dvResultado > table.tabelaFormulario')
-    texto = elemento.text
+    try:
+        # Captura os dados da primeira tabela
+        elemento = func_navegador.find_element(By.CSS_SELECTOR, '#ctl00_ContentPlaceHolder1_dvResultado > table.tabelaFormulario')
+        texto = elemento.text
+    except NoSuchElementException as e:
+        print(f"Erro ao capturar dados da primeira tabela: {e}")
+        return []  # Retorna uma lista vazia em caso de erro
+    except TimeoutException:
+        print("Timeout - A página não carregou a tempo. Tentando atualizar...")
+        func_navegador.refresh()  # Tenta atualizar a página
+        time.sleep(5)  # Aguarda 5 segundos para a página recarregar
+        return capturar_todos_os_dados(func_navegador, municipio, regiao)  # Tenta novamente após o refresh
 
     dados_gerais = {}
     for linha in texto.split("\n"):
@@ -66,9 +84,18 @@ def capturar_todos_os_dados(func_navegador, municipio, regiao):
     dados_gerais["Região"] = regiao
     print("Dados gerais capturados:", dados_gerais)
 
-    # Captura os dados da segunda tabela
-    tabela = func_navegador.find_element(By.CSS_SELECTOR, '#ctl00_ContentPlaceHolder1_dvResultado > table.tabelaRelatorio')
-    linhas = tabela.find_elements(By.CSS_SELECTOR, "tbody > tr")
+    try:
+        # Captura os dados da segunda tabela
+        tabela = func_navegador.find_element(By.CSS_SELECTOR, '#ctl00_ContentPlaceHolder1_dvResultado > table.tabelaRelatorio')
+        linhas = tabela.find_elements(By.CSS_SELECTOR, "tbody > tr")
+    except NoSuchElementException as e:
+        print(f"Erro ao capturar a segunda tabela: {e}")
+        return []  # Retorna uma lista vazia em caso de erro
+    except TimeoutException:
+        print("Timeout - A página não carregou a tempo. Tentando atualizar...")
+        func_navegador.refresh()  # Tenta atualizar a página
+        time.sleep(5)  # Aguarda 5 segundos para a página recarregar
+        return capturar_todos_os_dados(func_navegador, municipio, regiao)  # Tenta novamente após o refresh
 
     dados_completos = []
     
@@ -104,7 +131,13 @@ def capturar_todos_os_dados(func_navegador, municipio, regiao):
     return dados_completos
 
 def salvar_dados_completos_planilha(dados_completos, nome_arquivo):
-    caminho_arquivo = os.path.join(os.path.expanduser("~"), "Documents/Planilha ANM", nome_arquivo)
+    #caminho_arquivo = os.path.join(os.path.expanduser("~"), "Documents/Planilha ANM", nome_arquivo)
+
+    if not os.path.exists(pasta_planilha):
+        os.makedirs(pasta_planilha)
+        print(f"Pasta 'Planilha ANM' criada em: {pasta_planilha}")
+    
+    caminho_arquivo = os.path.join(pasta_planilha, nome_arquivo)
 
     if os.path.exists(caminho_arquivo):
         workbook = load_workbook(caminho_arquivo)
@@ -135,7 +168,6 @@ def salvar_dados_completos_planilha(dados_completos, nome_arquivo):
             dado["Operação"],
             dado["Recolhimento CFEM"],
             dado["% Recolhimento CFEM"]
-            
         ])
 
     workbook.save(caminho_arquivo)
