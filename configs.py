@@ -1,6 +1,9 @@
-from selenium import webdriver
+from selenium.webdriver import Chrome, ChromeOptions
 
-driver = webdriver.Chrome()  
-driver.maximize_window()
-url = "https://sistemas.anm.gov.br/arrecadacao/extra/relatorios/cfem/maiores_arrecadadores.aspx"
-driver.get(url)
+def iniciar_driver(headless=True):
+    options = ChromeOptions()
+    if headless:
+        options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])  # Remove logs do Chrome
+    return Chrome(options=options)  # Retorna o driver sem abrir a URL
